@@ -1,0 +1,77 @@
+{
+    "ChIJzyI68yFZei4RyZqy8Ejw5fw": {
+      "predicted_rating": 5.0,
+      "vendor_info": {
+        "name": "Arka wedding organizer & sanggar cakra adiluhung",
+        "address": "6964+5MC, Pringgokusuman, Gedong Tengen, Kota Yogyakarta, Daerah Istimewa Yogyakarta 55272",
+        "phone": "0818-0424-2270",
+        "description": null,
+        "website": null,
+        "featured_image": "https://lh3.ggpht.com/p/AF1QipPjRn6q_bvD8QR6xYQXTIlaENmTOQP-EXz3KIji=s1024",
+        "workday_timing": "Buka 24 jam",
+        "closed_on": "Open All Days",
+        "rating": 5,
+        "reviews_count": 2
+      },
+      "reviews": [
+        {
+          "reviewer_name": "Hartanto Rusadi",
+          "rating": 5,
+          "review_text": "Mantap",
+          "published_at": "2 tahun lalu"
+        }
+      ]
+    },
+    "ChIJHWnwVYFfei4Rs82VxlZS9PQ": {
+      "predicted_rating": 5.0,
+      "vendor_info": {
+        "name": "Pratama Wedding Organizer",
+        "address": "Candikarang, RT.04/RW.09, Sardonoharjo, Kabupaten Sleman, Daerah Istimewa Yogyakarta 55581",
+        "phone": null,
+        "description": null,
+        "website": null,
+        "featured_image": "https://lh3.ggpht.com/p/AF1QipM7-0g7gjtRaLfV_7VSpqPzwFvAgch67XWN5iY-=s1024",
+        "workday_timing": "Buka 24 jam",
+        "closed_on": "Open All Days",
+        "rating": 5,
+        "reviews_count": 2
+      },
+      "reviews": [
+        {
+          "reviewer_name": "Afraz Diya",
+          "rating": 5,
+          "review_text": "",
+          "published_at": "2 tahun lalu"
+        },
+        {
+          "reviewer_name": "nurul huda",
+          "rating": 5,
+          "review_text": "Joss",
+          "published_at": "2 tahun lalu"
+        }
+      ]
+    },
+    "ChIJn3AzZeFZei4ROAxR9EmIvmo": {
+      "predicted_rating": 3.5,
+      "vendor_info": {
+        "name": "Balai Kebon Dalem",
+        "address": "6988+9RH, Jl. Kb. Dalem, Gowongan, Kec. Jetis, Kota Yogyakarta, Daerah Istimewa Yogyakarta 55233",
+        "phone": null,
+        "description": null,
+        "website": null,
+        "featured_image": "https://lh3.ggpht.com/p/AF1QipM0NDoRg4cSc6_RaEI0cwNHKpVlyI2DOzP1ro6O=s1024",
+        "workday_timing": "09.00-17.00",
+        "closed_on": "Open All Days",
+        "rating": 3.5,
+        "reviews_count": 4
+      },
+      "reviews": [
+        {
+          "reviewer_name": "Dimaz",
+          "rating": 3,
+          "review_text": "Makan gudeg dpn jalan",
+          "published_at": "9 bulan lalu"
+        }
+      ]
+    }
+  }
