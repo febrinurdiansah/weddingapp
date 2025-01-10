@@ -1,6 +1,14 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import 'package:google_nav_bar/google_nav_bar.dart';
+
+import 'detailScreen.dart';
+import 'historiScreen.dart';
+import 'homeScreen.dart';
+import 'loginScreen.dart';
+import 'profilScreen.dart';
+import 'registerScreen.dart';
 
 void main() => runApp(MyApp());
 
@@ -8,99 +16,78 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Wedding Vendor App',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
-      home: HomePage(),
-    );
+        title: 'Wedding Vendor App',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+          visualDensity: VisualDensity.adaptivePlatformDensity,
+        ),
+        home: HomeScreen());
   }
 }
 
-class HomePage extends StatefulWidget {
+class NavPage extends StatefulWidget {
+  static List<Widget> _widgetOptions = <Widget>[
+    HomeScreen(),
+    HistoryScreen(),
+    ProfileScreen(),
+  ];
+
   @override
-  _HomePageState createState() => _HomePageState();
+  State<NavPage> createState() => _HomeState();
 }
 
-class _HomePageState extends State<HomePage> {
-  List<dynamic> vendors = [];
-
-  @override
-  void initState() {
-    super.initState();
-    loadVendors();
-  }
-
-  Future<void> loadVendors() async {
-    try {
-      String jsonString =
-          await rootBundle.loadString('assets/data/recommendations.json');
-      Map<String, dynamic> jsonResponse = json.decode(jsonString);
-      setState(() {
-        vendors = jsonResponse.values.toList();
-      });
-    } catch (e) {
-      print("Error loading vendors: $e");
-    }
-  }
+class _HomeState extends State<NavPage> {
+  int _selectedIndex = 0;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Daftar Vendor Pernikahan"),
-        backgroundColor: Colors.blueAccent,
-      ),
-      body: vendors.isEmpty
-          ? Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              itemCount: vendors.length,
-              itemBuilder: (context, index) {
-                var vendor = vendors[index];
-                return Card(
-                  margin: EdgeInsets.all(10),
-                  elevation: 5,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: ListTile(
-                    contentPadding: EdgeInsets.all(10),
-                    leading: Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        image: DecorationImage(
-                          image: NetworkImage(
-                              vendor['vendor_info']['featured_image'] ?? ''),
-                          fit: BoxFit.cover,
+        body: Center(
+          child: NavPage._widgetOptions.elementAt(_selectedIndex),
+        ),
+        bottomNavigationBar: Container(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 15, vertical: 2),
+            child: SafeArea(
+              child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8),
+                  child: GNav(
+                      rippleColor: Color.fromRGBO(218, 137, 100, 1),
+                      hoverColor: Color.fromRGBO(211, 121, 79, 1),
+                      gap: 8,
+                      activeColor: Color.fromRGBO(196, 86, 35, 1),
+                      iconSize: 24,
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      duration: Duration(milliseconds: 400),
+                      tabActiveBorder: Border.all(
+                          color: Color.fromRGBO(165, 90, 57, 1), width: 1),
+                      color: Color.fromRGBO(210, 177, 162, 1),
+                      tabs: [
+                        GButton(
+                          icon: Icons.home,
+                          text: 'Home',
                         ),
-                      ),
-                    ),
-                    title: Text(
-                      vendor['vendor_info']['name'],
-                      style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                    ),
-                    subtitle: Text(
-                      'Rating: ${vendor['vendor_info']['rating']}',
-                      style: TextStyle(fontSize: 14),
-                    ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              VendorDetailPage(vendor: vendor),
+                        GButton(
+                          icon: Icons.article_rounded,
+                          text: 'Histori',
                         ),
-                      );
-                    },
-                  ),
-                );
-              },
+                        GButton(
+                          icon: Icons.person,
+                          text: 'Profil',
+                        ),
+                      ],
+                      selectedIndex: _selectedIndex,
+                      onTabChange: (index) {
+                        setState(() {
+                          _selectedIndex = index;
+                        });
+                      })),
             ),
-    );
+          ),
+        ));
   }
 }
 
