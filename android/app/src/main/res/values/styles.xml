@@ -1,0 +1,11 @@
+<resources>
+    <!-- Default launch theme -->
+    <style name="LaunchTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- Customize the launch screen if needed -->
+    </style>
+
+    <!-- Default normal theme -->
+    <style name="NormalTheme" parent="Theme.AppCompat.Light">
+        <!-- Customize the normal theme if needed -->
+    </style>
+</resources>
