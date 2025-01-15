@@ -1,6 +1,36 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'auth_service.dart';
+import 'main.dart';
 
-class RegisterScreen extends StatelessWidget {
+class RegisterScreen extends StatefulWidget {
+  @override
+  _RegisterScreenState createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends State<RegisterScreen> {
+  final TextEditingController _nametxtCtrl = TextEditingController();
+  final TextEditingController _emailtxtCtrl = TextEditingController();
+  final TextEditingController _passtxtCtrl = TextEditingController();
+  final TextEditingController _pass2txtCtrl = TextEditingController();
+  final TextEditingController _telptxtCtrl = TextEditingController();
+
+  bool _isPasswordHidden = true;
+  bool _isConfirmPasswordHidden = true;
+
+  void _togglePasswordVisibility() {
+    setState(() {
+      _isPasswordHidden = !_isPasswordHidden;
+    });
+  }
+
+  void _toggleConfirmPasswordVisibility() {
+    setState(() {
+      _isConfirmPasswordHidden = !_isConfirmPasswordHidden;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -109,15 +139,27 @@ class RegisterScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _inputField("Name", "Your Name"),
+                              _inputField("Name", "Your Name", _nametxtCtrl),
                               SizedBox(height: 16),
-                              _inputField("Email", "Your email"),
+                              _inputField("Email", "Your email", _emailtxtCtrl),
                               SizedBox(height: 16),
-                              _inputField("Phone Number", "Your phone number"),
+                              _inputField("Phone Number", "Your phone number", _telptxtCtrl),
                               SizedBox(height: 16),
-                              _inputField("Password", "Your password, at least 8 character", obscureText: true),
+                              _passwordInputField("Password", "Your password, at least 8 character", _passtxtCtrl),
                               SizedBox(height: 16),
-                              _inputField("Confirm Password", "Re-type your password", obscureText: true),
+                              _passwordInputField("Confirm Password", "Re-type your password", _pass2txtCtrl),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                  },
+                                  child: Text(
+                                    "Punya Akun? Login disini",
+                                    style: TextStyle(color: Colors.blue),
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -142,8 +184,91 @@ class RegisterScreen extends StatelessWidget {
                     ),
                     SizedBox(height: 30),
                     ElevatedButton(
-                      onPressed: () {
-                        // Tambahkan aksi registrasi
+                      onPressed: () async {
+                        try {
+                          if (_passtxtCtrl.text == _pass2txtCtrl.text) {
+                            final message = await AuthService().registration(
+                              email: _emailtxtCtrl.text,
+                              password: _passtxtCtrl.text,
+                            );
+
+                            if (message!.contains('Success')) {
+                              // Ambil token ID Firebase
+                              final token = await AuthService().getToken();
+
+                              // Kirim data ke backend
+                              final response = await http.post(
+                                Uri.parse('https://api-bagas2.vercel.app/user/register'),
+                                headers: {
+                                  'Authorization': 'Bearer $token',
+                                  'Content-Type': 'application/json',
+                                },
+                                body: jsonEncode({
+                                  'name': _nametxtCtrl.text,
+                                  'email': _emailtxtCtrl.text,
+                                  'phone': _telptxtCtrl.text,
+                                }),
+                              );
+
+                              print('Response status: ${response.statusCode}');
+                              print('Response body: ${response.body}');
+
+                              if (response.statusCode == 201) {
+                              // Uraikan JSON respons
+                              final responseData = jsonDecode(response.body);
+
+                              print('Message: ${responseData['message']}');
+                              print('User data: ${responseData['user']}');
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => NavPage()),
+                                );
+                              } else {
+                                print('Error: ${response.body}');
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    backgroundColor: Colors.red,
+                                    content: Text(
+                                      "Gagal menyimpan data pengguna: ${response.body}",
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                  ),
+                                );
+                              }
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: Colors.red,
+                                  content: Text(
+                                    message,
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                              );
+                            }
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                backgroundColor: Colors.red,
+                                content: Text(
+                                  "Passwords tidak sama, tolong ulangi lagi.",
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          print("Register error : $e");
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              backgroundColor: Colors.red,
+                              content: Text(
+                                "Regristrasi error, tolong ulangi lagi nanti.",
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          );
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Color.fromRGBO(195, 147, 124, 1),
@@ -170,7 +295,8 @@ class RegisterScreen extends StatelessWidget {
     );
   }
 
-  Widget _inputField(String label, String hintText, {bool obscureText = false}) {
+  // Fungsi untuk TextField biasa
+  Widget _inputField(String label, String hintText, TextEditingController txtController) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -185,13 +311,47 @@ class RegisterScreen extends StatelessWidget {
           ),
           SizedBox(height: 8),
           TextFormField(
-            obscureText: obscureText,
+            controller: txtController,
             decoration: InputDecoration(
               hintText: hintText,
-              contentPadding: EdgeInsets.symmetric( vertical: 12),
-              suffixIcon: obscureText
-                  ? Icon(Icons.visibility, color: Colors.grey)
-                  : null,
+              contentPadding: EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Fungsi untuk TextField password
+  Widget _passwordInputField(String label, String hintText, TextEditingController txtController) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          SizedBox(height: 8),
+          TextFormField(
+            controller: txtController,
+            obscureText: label == "Password" ? _isPasswordHidden : _isConfirmPasswordHidden,
+            decoration: InputDecoration(
+              hintText: hintText,
+              contentPadding: EdgeInsets.symmetric(vertical: 12),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  label == "Password"
+                      ? (_isPasswordHidden ? Icons.visibility_off : Icons.visibility)
+                      : (_isConfirmPasswordHidden ? Icons.visibility_off : Icons.visibility),
+                  color: Colors.grey,
+                ),
+                onPressed: label == "Password" ? _togglePasswordVisibility : _toggleConfirmPasswordVisibility,
+              ),
             ),
           ),
         ],

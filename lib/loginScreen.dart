@@ -1,6 +1,34 @@
+import 'package:WeddingAPP/registerScreen.dart';
 import 'package:flutter/material.dart';
 
-class LoginScreen extends StatelessWidget {
+import 'auth_service.dart';
+import 'main.dart';
+
+class LoginScreen extends StatefulWidget {
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+
+  final TextEditingController _emailtxtCtrl = TextEditingController();
+    final TextEditingController _passtxtCtrl = TextEditingController();
+
+    bool _isPasswordHidden = true;
+    bool _isConfirmPasswordHidden = true;
+
+    void _togglePasswordVisibility() {
+      setState(() {
+        _isPasswordHidden = !_isPasswordHidden;
+      });
+    }
+
+    void _toggleConfirmPasswordVisibility() {
+      setState(() {
+        _isConfirmPasswordHidden = !_isConfirmPasswordHidden;
+      });
+    }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -37,7 +65,10 @@ class LoginScreen extends StatelessWidget {
                     ),
                     TextButton(
                       onPressed: () {
-                        // Tambahkan navigasi ke halaman sign up
+                        Navigator.push(context, MaterialPageRoute(
+                          builder: (context) => RegisterScreen(),
+                          )
+                        );
                       },
                       child: Text(
                         "No Account? \nSign up",
@@ -77,11 +108,9 @@ class LoginScreen extends StatelessWidget {
                           ),
                         ),
                         SizedBox(height: 16),
-                        _inputField("Enter your username or email",
-                            "Usename or email address"),
+                        _inputField("Masukkan email anda", "Email", _emailtxtCtrl),
                         SizedBox(height: 16),
-                        _inputField("Password", "Enter your Password",
-                            obscureText: true),
+                        _passwordInputField("Masukkan password anda", "Password", _passtxtCtrl),
                         SizedBox(height: 8),
                         Align(
                           alignment: Alignment.centerRight,
@@ -90,7 +119,7 @@ class LoginScreen extends StatelessWidget {
                               // Tambahkan aksi lupa password
                             },
                             child: Text(
-                              "Forgot Password",
+                              "Lupa Password",
                               style: TextStyle(color: Colors.grey),
                             ),
                           ),
@@ -98,8 +127,30 @@ class LoginScreen extends StatelessWidget {
                         SizedBox(height: 16),
                         Center(
                           child: ElevatedButton(
-                            onPressed: () {
-                              // Tambahkan aksi login
+                            onPressed: () async {
+                              try {
+                                final message = await AuthService().login(
+                                  email: _emailtxtCtrl.text,
+                                  password: _passtxtCtrl.text,
+                                );
+                                if (message!.contains('Success')) {
+                                  Navigator.push(context, MaterialPageRoute(
+                                    builder: (context) => NavPage(),
+                                    )
+                                  );
+                                }
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    backgroundColor: Colors.red,
+                                    content: Text(message,
+                                      style: TextStyle(
+                                        color: Colors.white
+                                      ),),
+                                  ),
+                                );
+                              } catch (e) {
+                                print("Login error : $e");
+                              }
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Color.fromRGBO(195, 147, 124, 1),
@@ -154,33 +205,66 @@ class LoginScreen extends StatelessWidget {
     );
   }
 
-  Widget _inputField(String label, String hintText,
-      {bool obscureText = false}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        SizedBox(height: 8),
-        TextFormField(
-          obscureText: obscureText,
-          decoration: InputDecoration(
-            hintText: hintText,
-            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            suffixIcon:
-                obscureText ? Icon(Icons.visibility, color: Colors.grey) : null,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey.shade300),
+  Widget _inputField(String label, String hintText, TextEditingController txtController) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
             ),
           ),
-        ),
-      ],
+          SizedBox(height: 8),
+          TextFormField(
+            controller: txtController,
+            decoration: InputDecoration(
+              hintText: hintText,
+              contentPadding: EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Fungsi untuk TextField password
+  Widget _passwordInputField(String label, String hintText, TextEditingController txtController) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          SizedBox(height: 8),
+          TextFormField(
+            controller: txtController,
+            obscureText: label == "Password" ? _isPasswordHidden : _isConfirmPasswordHidden,
+            decoration: InputDecoration(
+              hintText: hintText,
+              contentPadding: EdgeInsets.symmetric(vertical: 12),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  label == "Password"
+                      ? (_isPasswordHidden ? Icons.visibility_off : Icons.visibility)
+                      : (_isConfirmPasswordHidden ? Icons.visibility_off : Icons.visibility),
+                  color: Colors.grey,
+                ),
+                onPressed: label == "Password" ? _togglePasswordVisibility : _toggleConfirmPasswordVisibility,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

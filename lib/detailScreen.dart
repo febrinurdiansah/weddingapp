@@ -1,13 +1,53 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:custom_rating_bar/custom_rating_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class VendorDetailScreen extends StatelessWidget {
   final dynamic vendor;
   VendorDetailScreen({super.key, this.vendor});
 
+  Future<void> saveToHistory(Map<String, dynamic> vendor) async {
+    // Simpan ke SharedPreferences seperti sebelumnya
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String> history = prefs.getStringList('vendor_history') ?? [];
+    String vendorJson = json.encode(vendor);
+
+    if (history.contains(vendorJson)) {
+      history.remove(vendorJson);
+      history.insert(0, vendorJson);
+    } else {
+      history.insert(0, vendorJson);
+    }
+    await prefs.setStringList('vendor_history', history);
+
+    // Tambahkan pengiriman ke API
+    try {
+      final String? uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) {
+        final response = await http.post(
+          Uri.parse('https://api-bagas2.vercel.app/user/$uid/history'),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({
+            'searchItem': vendor['place_id'], // Mengirim place_id ke API
+          }),
+        );
+
+        if (response.statusCode != 200) {
+          print('Error saving to server: ${response.body}');
+        }
+      }
+    } catch (e) {
+      print('Error saving history: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    saveToHistory(vendor);
     return Scaffold(
       backgroundColor: Color.fromRGBO(234, 217, 201, 1),
       appBar: AppBar(
