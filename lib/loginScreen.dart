@@ -129,27 +129,28 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: ElevatedButton(
                             onPressed: () async {
                               try {
-                                final message = await AuthService().login(
+                                final result = await AuthService().login(
                                   email: _emailtxtCtrl.text,
                                   password: _passtxtCtrl.text,
                                 );
-                                if (message!.contains('Success')) {
-                                  Navigator.push(context, MaterialPageRoute(
-                                    builder: (context) => NavPage(),
-                                    )
+                                if (result['status'] == 'Success') {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => NavPage()),
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      backgroundColor: Colors.red,
+                                      content: Text(
+                                        result['message'],
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                    ),
                                   );
                                 }
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    backgroundColor: Colors.red,
-                                    content: Text(message,
-                                      style: TextStyle(
-                                        color: Colors.white
-                                      ),),
-                                  ),
-                                );
                               } catch (e) {
-                                print("Login error : $e");
+                                print("Login error: $e");
                               }
                             },
                             style: ElevatedButton.styleFrom(

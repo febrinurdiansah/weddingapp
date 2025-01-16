@@ -1,43 +1,46 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:custom_rating_bar/custom_rating_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'auth_service.dart';
 
 class VendorDetailScreen extends StatelessWidget {
   final dynamic vendor;
+  final AuthService _authService = AuthService();
+
   VendorDetailScreen({super.key, this.vendor});
 
   Future<void> saveToHistory(Map<String, dynamic> vendor) async {
-    // Simpan ke SharedPreferences seperti sebelumnya
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    List<String> history = prefs.getStringList('vendor_history') ?? [];
-    String vendorJson = json.encode(vendor);
-
-    if (history.contains(vendorJson)) {
-      history.remove(vendorJson);
-      history.insert(0, vendorJson);
-    } else {
-      history.insert(0, vendorJson);
-    }
-    await prefs.setStringList('vendor_history', history);
-
-    // Tambahkan pengiriman ke API
     try {
-      final String? uid = FirebaseAuth.instance.currentUser?.uid;
-      if (uid != null) {
+      final token = await _authService.getToken();
+      final userId = await _authService.getUserId();
+      
+      print('Saving to history - Token: $token, UserId: $userId'); // Debug log
+      
+      if (userId != null && token != null) {
+        // Prepare the data to be sent
+        final historyData = {
+          'searchItem': vendor['place_id'],
+          'vendorName': vendor['name'] ?? 'Unknown Vendor',
+          'timestamp': DateTime.now().toIso8601String(),
+        };
+
         final response = await http.post(
-          Uri.parse('https://api-bagas2.vercel.app/user/$uid/history'),
-          headers: {'Content-Type': 'application/json'},
-          body: json.encode({
-            'searchItem': vendor['place_id'], // Mengirim place_id ke API
-          }),
+          Uri.parse('https://api-bagas2.vercel.app/user/$userId/history'),
+          headers: {
+            'Content-Type': 'application/json',
+            'x-auth-token': token,
+          },
+          body: json.encode(historyData),
         );
 
+        print('Save history response: ${response.statusCode}'); // Debug log
+        print('Response body: ${response.body}'); // Debug log
+
         if (response.statusCode != 200) {
-          print('Error saving to server: ${response.body}');
+          throw Exception('Failed to save history: ${response.body}');
         }
       }
     } catch (e) {
@@ -47,7 +50,11 @@ class VendorDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    saveToHistory(vendor);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (vendor != null) {
+        saveToHistory(vendor);
+      }
+    });
     return Scaffold(
       backgroundColor: Color.fromRGBO(234, 217, 201, 1),
       appBar: AppBar(

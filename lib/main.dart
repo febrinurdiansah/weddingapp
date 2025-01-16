@@ -4,20 +4,14 @@ import 'package:flutter/services.dart';
 
 import 'package:google_nav_bar/google_nav_bar.dart';
 import 'package:device_preview/device_preview.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
-import 'detailScreen.dart';
+import 'auth_service.dart';
 import 'historiScreen.dart';
 import 'homeScreen.dart';
 import 'loginScreen.dart';
 import 'profilScreen.dart';
-import 'registerScreen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
   runApp(
     DevicePreview(
       enabled: !kReleaseMode,
@@ -26,12 +20,51 @@ void main() async {
   );
 }
 
+class SplashScreen extends StatefulWidget {
+  @override
+  _SplashScreenState createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  final AuthService _authService = AuthService();
+
+  @override
+  void initState() {
+    super.initState();
+    checkSession();
+  }
+
+  Future<void> checkSession() async {
+    final isLoggedIn = await _authService.checkLoginSession();
+    if (isLoggedIn) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => NavPage()),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => LoginScreen()),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+  }
+}
+
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
         debugShowCheckedModeBanner: false,
-        home: LoginScreen());
+        home: SplashScreen());
   }
 }
 

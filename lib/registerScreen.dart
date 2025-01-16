@@ -1,6 +1,6 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'auth_service.dart';
 import 'main.dart';
 
@@ -16,8 +16,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _pass2txtCtrl = TextEditingController();
   final TextEditingController _telptxtCtrl = TextEditingController();
 
+  String? _selectedCountry;
+  File? _profileImage;
   bool _isPasswordHidden = true;
   bool _isConfirmPasswordHidden = true;
+
+  final List<String> _countries = [
+    "Indonesia",
+    "USA",
+    "Singapura",
+    "Japan",
+    "Germany",
+    "France",
+    "Australia",
+  ];
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      setState(() {
+        _profileImage = File(pickedFile.path);
+      });
+    }
+  }
 
   void _togglePasswordVisibility() {
     setState(() {
@@ -45,7 +68,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               width: 250,
               height: 250,
               decoration: BoxDecoration(
-                color: Color.fromRGBO(195, 147, 124, 1), // Warna lingkaran besar
+                color: Color.fromRGBO(195, 147, 124, 1),
                 shape: BoxShape.circle,
               ),
             ),
@@ -57,7 +80,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               width: 50,
               height: 50,
               decoration: BoxDecoration(
-                color: Color.fromRGBO(195, 147, 124, 1), // Warna lingkaran sedang
+                color: Color.fromRGBO(195, 147, 124, 1),
                 shape: BoxShape.circle,
               ),
             ),
@@ -69,7 +92,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               width: 15,
               height: 15,
               decoration: BoxDecoration(
-                color: Color.fromRGBO(195, 147, 124, 1), // Warna dot kecil
+                color: Color.fromRGBO(195, 147, 124, 1),
                 shape: BoxShape.circle,
               ),
             ),
@@ -114,7 +137,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                     SizedBox(height: 80),
-                    // Stack untuk menggabungkan CircleAvatar dan Container
+                    // Stack untuk CircleAvatar dan Container
                     Stack(
                       clipBehavior: Clip.none,
                       children: [
@@ -145,6 +168,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               SizedBox(height: 16),
                               _inputField("Phone Number", "Your phone number", _telptxtCtrl),
                               SizedBox(height: 16),
+                              _countryDropdown(),
+                              SizedBox(height: 16),
                               _passwordInputField("Password", "Your password, at least 8 character", _passtxtCtrl),
                               SizedBox(height: 16),
                               _passwordInputField("Confirm Password", "Re-type your password", _pass2txtCtrl),
@@ -155,7 +180,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     Navigator.pop(context);
                                   },
                                   child: Text(
-                                    "Punya Akun? Login disini",
+                                    "Have an Account? Login here",
                                     style: TextStyle(color: Colors.blue),
                                   ),
                                 ),
@@ -163,19 +188,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ],
                           ),
                         ),
-                        // CircleAvatar di atas bagian atas Container
                         Positioned(
                           top: -40,
                           left: 0,
                           right: 0,
                           child: Center(
-                            child: CircleAvatar(
-                              radius: 45,
-                              backgroundColor: Color(0xFF6E5F5F), // Warna lingkaran foto
-                              child: Icon(
-                                Icons.camera_alt,
-                                color: Colors.white,
-                                size: 28,
+                            child: GestureDetector(
+                              onTap: _pickImage,
+                              child: CircleAvatar(
+                                radius: 45,
+                                backgroundColor: Color(0xFF6E5F5F),
+                                backgroundImage: _profileImage != null
+                                    ? FileImage(_profileImage!)
+                                    : null,
+                                child: _profileImage == null
+                                    ? Icon(
+                                        Icons.camera_alt,
+                                        color: Colors.white,
+                                        size: 28,
+                                      )
+                                    : null,
                               ),
                             ),
                           ),
@@ -187,89 +219,63 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       onPressed: () async {
                         try {
                           if (_passtxtCtrl.text == _pass2txtCtrl.text) {
-                            final message = await AuthService().registration(
+                            // Pastikan country tidak null
+                            if (_selectedCountry == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Please select a country')),
+                              );
+                              return;
+                            }
+
+                            final result = await AuthService().registration(
                               email: _emailtxtCtrl.text,
                               password: _passtxtCtrl.text,
+                              name: _nametxtCtrl.text,
+                              phone: _telptxtCtrl.text,
+                              country: _selectedCountry!,
+                              profileImage: _profileImage,
                             );
 
-                            if (message!.contains('Success')) {
-                              // Ambil token ID Firebase
-                              final token = await AuthService().getToken();
-
-                              // Kirim data ke backend
-                              final response = await http.post(
-                                Uri.parse('https://api-bagas2.vercel.app/user/register'),
-                                headers: {
-                                  'Authorization': 'Bearer $token',
-                                  'Content-Type': 'application/json',
-                                },
-                                body: jsonEncode({
-                                  'name': _nametxtCtrl.text,
-                                  'email': _emailtxtCtrl.text,
-                                  'phone': _telptxtCtrl.text,
-                                }),
+                            if (result['status'] == 'Success') {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(builder: (context) => NavPage()),
                               );
-
-                              print('Response status: ${response.statusCode}');
-                              print('Response body: ${response.body}');
-
-                              if (response.statusCode == 201) {
-                              // Uraikan JSON respons
-                              final responseData = jsonDecode(response.body);
-
-                              print('Message: ${responseData['message']}');
-                              print('User data: ${responseData['user']}');
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => NavPage()),
-                                );
-                              } else {
-                                print('Error: ${response.body}');
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    backgroundColor: Colors.red,
-                                    content: Text(
-                                      "Gagal menyimpan data pengguna: ${response.body}",
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                  ),
-                                );
-                              }
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   backgroundColor: Colors.red,
                                   content: Text(
-                                    message,
+                                    result['message'],
                                     style: TextStyle(color: Colors.white),
                                   ),
                                 ),
                               );
                             }
                           } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: Colors.red,
+                                  content: Text(
+                                    "Passwords tidak sama, tolong ulangi lagi.",
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            print("Register error: $e");
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 backgroundColor: Colors.red,
                                 content: Text(
-                                  "Passwords tidak sama, tolong ulangi lagi.",
+                                  "Registrasi error, tolong ulangi lagi nanti.",
                                   style: TextStyle(color: Colors.white),
                                 ),
                               ),
                             );
                           }
-                        } catch (e) {
-                          print("Register error : $e");
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              backgroundColor: Colors.red,
-                              content: Text(
-                                "Regristrasi error, tolong ulangi lagi nanti.",
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ),
-                          );
-                        }
-                      },
+                        },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Color.fromRGBO(195, 147, 124, 1),
                         padding: EdgeInsets.symmetric(horizontal: 40, vertical: 14),
@@ -295,26 +301,52 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // Fungsi untuk TextField biasa
   Widget _inputField(String label, String hintText, TextEditingController txtController) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+          SizedBox(height: 8),
+          TextFormField(controller: txtController, decoration: InputDecoration(hintText: hintText)),
+        ],
+      ),
+    );
+  }
+
+  Widget _countryDropdown() {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Text(
-            label,
+            "Country",
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: Colors.black,
             ),
           ),
           SizedBox(height: 8),
-          TextFormField(
-            controller: txtController,
+          DropdownButtonFormField<String>(
+            value: _selectedCountry,
+            items: _countries.map((country) {
+              return DropdownMenuItem(
+                value: country,
+                child: Text(country),
+              );
+            }).toList(),
+            onChanged: (value) {
+              setState(() {
+                _selectedCountry = value;
+              });
+            },
             decoration: InputDecoration(
-              hintText: hintText,
-              contentPadding: EdgeInsets.symmetric(vertical: 12),
+              contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
           ),
         ],
@@ -322,33 +354,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // Fungsi untuk TextField password
   Widget _passwordInputField(String label, String hintText, TextEditingController txtController) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-            ),
-          ),
+          Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
           SizedBox(height: 8),
           TextFormField(
             controller: txtController,
             obscureText: label == "Password" ? _isPasswordHidden : _isConfirmPasswordHidden,
             decoration: InputDecoration(
               hintText: hintText,
-              contentPadding: EdgeInsets.symmetric(vertical: 12),
               suffixIcon: IconButton(
                 icon: Icon(
-                  label == "Password"
-                      ? (_isPasswordHidden ? Icons.visibility_off : Icons.visibility)
-                      : (_isConfirmPasswordHidden ? Icons.visibility_off : Icons.visibility),
-                  color: Colors.grey,
+                  label == "Password" ? (_isPasswordHidden ? Icons.visibility_off : Icons.visibility) : (_isConfirmPasswordHidden ? Icons.visibility_off : Icons.visibility),
                 ),
                 onPressed: label == "Password" ? _togglePasswordVisibility : _toggleConfirmPasswordVisibility,
               ),

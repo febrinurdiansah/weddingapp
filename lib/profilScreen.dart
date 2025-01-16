@@ -1,11 +1,13 @@
 import 'package:WeddingAPP/loginScreen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:io';
+
+import 'auth_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override
@@ -16,55 +18,90 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String name = "Loading...";
   String email = "Loading...";
   DateTime dateOfBirth = DateTime.now();
-  String country = "Loading...";
+  String country = "Indonesia";
   File? profileImage;
+  final AuthService _authService = AuthService();
+  bool isLoading = true;
 
-Future<Map<String, dynamic>> fetchUserProfile() async {
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) {
-    throw Exception("User not logged in");
+  @override
+  void initState() {
+    super.initState();
+    _checkAuthAndLoadProfile();
   }
 
-  final response = await http.get(
-    Uri.parse('https://api-bagas2.vercel.app/user/${user.uid}'),
-  );
+  Future<void> _checkAuthAndLoadProfile() async {
+    try {
+      // Periksa status login
+      final isLoggedIn = await _authService.checkLoginSession();
+      if (!isLoggedIn) {
+        // Redirect ke login jika tidak login
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => LoginScreen()),
+          );
+        }
+        return;
+      }
 
-  if (response.statusCode == 200) {
-    return json.decode(response.body);
-  } else {
-    throw Exception("Failed to load user profile");
+      // Load profile jika sudah login
+      await _loadUserProfile();
+    } catch (e) {
+      print('Error in _checkAuthAndLoadProfile: $e');
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
   }
-}
 
-@override
-void initState() {
-  super.initState();
-  _loadUserData();
-}
-
-void _loadUserData() async {
-  try {
-    final userData = await fetchUserProfile();
-    setState(() {
-      name = userData['name'];
-      email = userData['email'];
-      dateOfBirth = DateTime.parse(userData['dateOfBirth']);
-      country = userData['country'];
-      profileImage = userData['profileImage'] != null ? File(userData['profileImage']) : null;
-    });
-  } catch (e) {
-    print("Error loading user data: $e");
+  Future<void> _loadUserProfile() async {
+    try {
+      final userData = await _authService.getCurrentUser();
+      
+      if (userData != null && mounted) {
+        setState(() {
+          name = userData['name'] ?? "No Name";
+          email = userData['email'] ?? "No Email";
+          dateOfBirth = DateTime.parse(userData['dateOfBirth'] ?? DateTime.now().toIso8601String());
+          country = userData['country'] ?? 'Indonesia';
+          if (userData['profileImage'] != null) {
+            profileImage = File(userData['profileImage']);
+          }
+          isLoading = false;
+        });
+      } else {
+        throw Exception("Failed to load user data");
+      }
+    } catch (e) {
+      print('Error loading profile: $e');
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
   }
-}
 
   void _updateProfile(Map<String, dynamic> updatedData) {
     setState(() {
       name = updatedData["name"] ?? name;
-      dateOfBirth = updatedData["dateOfBirth"] ?? dateOfBirth;
+      if (updatedData["dateOfBirth"] != null) {
+        if (updatedData["dateOfBirth"] is String) {
+          dateOfBirth = DateTime.parse(updatedData["dateOfBirth"]);
+        } 
+        else if (updatedData["dateOfBirth"] is DateTime) {
+          dateOfBirth = updatedData["dateOfBirth"];
+        }
+      }
       country = updatedData["country"] ?? country;
-      profileImage = updatedData["profileImage"] ?? profileImage;
+      if (updatedData["profileImage"] != null) {
+        profileImage = updatedData["profileImage"] is File 
+            ? updatedData["profileImage"] 
+            : File(updatedData["profileImage"]);
+      }
     });
-  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -74,22 +111,34 @@ void _loadUserData() async {
         elevation: 0,
         title: Text("Profile", style: TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
         centerTitle: true,
+        leading: Container(),
         actions: [
           IconButton(
             icon: Icon(Icons.edit, color: Colors.black),
             onPressed: () async {
               final updatedData = await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => EditProfileScreen(name: name, email: email, dateOfBirth: dateOfBirth, country: country, profileImage: profileImage)),
+                MaterialPageRoute(
+                  builder: (context) => EditProfileScreen(
+                    name: name,
+                    email: email,
+                    dateOfBirth: dateOfBirth,
+                    country: country,
+                    profileImage: profileImage,
+                  ),
+                ),
               );
               if (updatedData != null) {
                 _updateProfile(updatedData);
+                await _loadUserProfile();
               }
             },
           )
         ],
       ),
-      body: SingleChildScrollView(
+      body: isLoading
+      ? Center(child: CircularProgressIndicator(),)
+      : SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -152,10 +201,13 @@ void _loadUserData() async {
               SizedBox(height: 20),
               Center(
                 child: ElevatedButton(
-                  onPressed: ()  => Navigator.push(context, MaterialPageRoute(
-                    builder: (context) => LoginScreen(),
-                    )
-                  ),
+                  onPressed: () async {
+                    await _authService.logout();
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => LoginScreen()),
+                    );
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,
                     padding: EdgeInsets.symmetric(
@@ -208,23 +260,52 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   DateTime? selectedDateOfBirth;
   String? selectedCountry;
   File? profileImage;
+  final AuthService _authService = AuthService();
 
   Future<void> updateUserProfile(Map<String, dynamic> updatedData) async {
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) {
-    throw Exception("User not logged in");
+    try {
+      final token = await _authService.getToken();
+      final userId = await _authService.getUserId();
+
+      if (token == null || userId == null) {
+        throw Exception("User not logged in");
+      }
+
+      String? base64Image;
+      if (profileImage != null) {
+        List<int> imageBytes = await profileImage!.readAsBytes();
+        base64Image = base64Encode(imageBytes);
+      }
+
+      final Map<String, dynamic> bodyData = {
+        'name': updatedData['name'],
+        'dateOfBirth': updatedData['dateOfBirth'],
+        'country': updatedData['country'],
+        if (base64Image != null) 'profileImage': base64Image,
+      };
+
+      final response = await http.put(
+        Uri.parse('https://api-bagas2.vercel.app/user/$userId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode(bodyData),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception("Failed to update profile: ${response.body}");
+      }
+
+      Navigator.pop(context, true);
+    } catch (e) {
+      print('Error updating profile: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update profile: ${e.toString()}')),
+      );
+    }
   }
 
-  final response = await http.put(
-    Uri.parse('https://api-bagas2.vercel.app/user/${user.uid}'),
-    headers: {'Content-Type': 'application/json'},
-    body: json.encode(updatedData),
-  );
-
-  if (response.statusCode != 200) {
-    throw Exception("Failed to update user profile");
-  }
-}
 
 
   @override
@@ -255,9 +336,38 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _pickImage() async {
     final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
-      setState(() {
-        profileImage = File(pickedFile.path);
-      });
+      // Compress image
+      File? compressedImage = await compressImage(File(pickedFile.path));
+      if (compressedImage != null) {
+        setState(() {
+          profileImage = compressedImage;
+        });
+      }
+    }
+  }
+
+  Future<File?> compressImage(File file) async {
+    try {
+      // Get file path
+      final filePath = file.absolute.path;
+      
+      // Create output file path
+      final lastIndex = filePath.lastIndexOf(RegExp(r'.jp'));
+      final splitName = filePath.substring(0, (lastIndex));
+      final outPath = "${splitName}_compressed.jpg";
+      
+      // Compress file
+      final compressedImage = await FlutterImageCompress.compressAndGetFile(
+        filePath,
+        outPath,
+        quality: 70, // Adjust quality as needed (0-100)
+        format: CompressFormat.jpeg,
+      );
+      
+      return compressedImage != null ? File(compressedImage.path) : null;
+    } catch (e) {
+      print('Error compressing image: $e');
+      return null;
     }
   }
 
@@ -350,18 +460,30 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               SizedBox(height: 30),
               ElevatedButton(
                 onPressed: () async {
-                  final updatedData = {
-                    "name": nameController.text,
-                    "dateOfBirth": DateFormat('dd/MM/yyyy').parse(dateController.text).toIso8601String(),
-                    "country": selectedCountry,
-                    "profileImage": profileImage?.path,
-                  };
-
                   try {
+                    final DateTime parsedDate = DateFormat('dd/MM/yyyy').parse(dateController.text);
+                    final updatedData = {
+                      "name": nameController.text,
+                      "dateOfBirth": parsedDate.toIso8601String(),
+                      "country": selectedCountry,
+                    };
                     await updateUserProfile(updatedData);
-                    Navigator.pop(context, updatedData);
+
+                    Navigator.pop(context, {
+                      "name": nameController.text,
+                      "dateOfBirth": parsedDate,
+                      "country": selectedCountry,
+                      "profileImage": profileImage,
+                    });
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Profile updated successfully')),
+                    );
                   } catch (e) {
                     print("Error updating user profile: $e");
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to update profile: $e')),
+                    );
                   }
                 },
                 style: ElevatedButton.styleFrom(
