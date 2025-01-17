@@ -3,27 +3,31 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:custom_rating_bar/custom_rating_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:map_launcher/map_launcher.dart';
 import 'auth_service.dart';
 
-class VendorDetailScreen extends StatelessWidget {
+class VendorDetailScreen extends StatefulWidget {
   final dynamic vendor;
-  final AuthService _authService = AuthService();
 
-  VendorDetailScreen({super.key, this.vendor});
+  VendorDetailScreen({Key? key, this.vendor}) : super(key: key);
+
+  @override
+  State<VendorDetailScreen> createState() => _VendorDetailScreenState();
+}
+
+class _VendorDetailScreenState extends State<VendorDetailScreen> {
+  final AuthService _authService = AuthService();
+  int _visibleReviewsCount = 10;
 
   Future<void> saveToHistory(Map<String, dynamic> vendor) async {
     try {
       final token = await _authService.getToken();
       final userId = await _authService.getUserId();
-      
-      print('Saving to history - Token: $token, UserId: $userId'); // Debug log
-      
+
       if (userId != null && token != null) {
-        // Prepare the data to be sent
         final historyData = {
           'searchItem': vendor['place_id'],
-          'vendorName': vendor['name'] ?? 'Unknown Vendor',
+          'vendorName': vendor['vendor_info']['name'] ?? 'Unknown Vendor',
           'timestamp': DateTime.now().toIso8601String(),
         };
 
@@ -36,9 +40,6 @@ class VendorDetailScreen extends StatelessWidget {
           body: json.encode(historyData),
         );
 
-        print('Save history response: ${response.statusCode}'); // Debug log
-        print('Response body: ${response.body}'); // Debug log
-
         if (response.statusCode != 200) {
           throw Exception('Failed to save history: ${response.body}');
         }
@@ -49,12 +50,20 @@ class VendorDetailScreen extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  void initState() {
+    super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (vendor != null) {
-        saveToHistory(vendor);
+      if (widget.vendor != null) {
+        saveToHistory(widget.vendor);
       }
     });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final vendor = widget.vendor;
+    final reviews = vendor['reviews'] ?? [];
+
     return Scaffold(
       backgroundColor: Color.fromRGBO(234, 217, 201, 1),
       appBar: AppBar(
@@ -67,7 +76,18 @@ class VendorDetailScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: Icon(Icons.share, color: Colors.black),
-            onPressed: () {},
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Fitur Share belum tersedia',
+                    style: TextStyle(color: const Color.fromRGBO(255, 255, 255, 1)),
+                  ),
+                  duration: Duration(seconds: 2),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -79,13 +99,7 @@ class VendorDetailScreen extends StatelessWidget {
             Stack(
               children: [
                 Image.network(
-                  vendor['vendor_info']['featured_image'] ??
-                      Image.asset(
-                        'assets/img/no_img.png',
-                        width: double.infinity,
-                        height: 350,
-                        fit: BoxFit.cover,
-                      ),
+                  vendor['vendor_info']['featured_image'] ?? '',
                   width: double.infinity,
                   height: 350,
                   fit: BoxFit.cover,
@@ -109,9 +123,10 @@ class VendorDetailScreen extends StatelessWidget {
                         child: CircleAvatar(
                           radius: 40,
                           backgroundColor: Colors.white,
-                          backgroundImage: NetworkImage(vendor['vendor_info']
-                                  ['featured_image'] ??
-                              AssetImage("assets/img/no_img.png")),
+                          backgroundImage: NetworkImage(
+                            vendor['vendor_info']['featured_image'] ??
+                                'assets/img/no_img.png',
+                          ),
                         ),
                       ),
                       SizedBox(height: 8),
@@ -127,7 +142,7 @@ class VendorDetailScreen extends StatelessWidget {
                       ),
                       SizedBox(height: 4),
                       Text(
-                        "${vendor['vendor_info']['reviews_count']} Reviews",
+                        "${vendor['vendor_info']['reviews_count']} Ulasan",
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -159,6 +174,7 @@ class VendorDetailScreen extends StatelessWidget {
               ],
             ),
             SizedBox(height: 16),
+
             // About Section
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
@@ -166,7 +182,7 @@ class VendorDetailScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "About",
+                    "Tentang Kami",
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 20,
@@ -180,44 +196,105 @@ class VendorDetailScreen extends StatelessWidget {
                   ),
                   SizedBox(height: 16),
                   Text(
-                    "Workday Timing: ${vendor['vendor_info']['workday_timing']}" ??
-                        "Tidak ada Jam Kerja",
+                    "Buka pada: ${vendor['vendor_info']['workday_timing'] ?? "Tidak ada Jam Kerja"}",
                     style: TextStyle(fontSize: 14, color: Colors.black),
                   ),
                   SizedBox(height: 4),
                   Text(
-                    "Closed On: ${vendor['vendor_info']['closed_on']}" ??
-                        "Tidak ada Tutup",
+                    "Tutup pada: ${vendor['vendor_info']['closed_on'] ?? "Tidak ada Tutup/Selalu Buka"}",
                     style: TextStyle(fontSize: 14, color: Colors.black),
                   ),
                 ],
               ),
             ),
             SizedBox(height: 20),
+
+            // Map Section
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Container(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    final coordinates = vendor['vendor_info']['coordinates'];
+                    if (coordinates != null && 
+                        coordinates['latitude'] != null && 
+                        coordinates['longitude'] != null) {
+                      final availableMaps = await MapLauncher.installedMaps;
+                      if (availableMaps.isNotEmpty) {
+                        await availableMaps.first.showMarker(
+                          coords: Coords(
+                            coordinates['latitude'],
+                            coordinates['longitude'],
+                          ),
+                          title: vendor['vendor_info']['name'],
+                          description: vendor['vendor_info']['address'],
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Aplikasi maps tidak terinstall!"),
+                          ),
+                        );
+                      }
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Koordinat lokasi tidak tersedia!"),
+                        ),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.map,
+                    color: Colors.black,
+                    ),
+                  label: const Text("Buka di Maps",
+                  style: TextStyle(
+                    color: Colors.black
+                  ),
+                    ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color.fromRGBO(195, 147, 124, 1),
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: 16),
+
             // Action Buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton.icon(
                   onPressed: () async {
-                    final call = 'tel:${vendor['vendor_info']['phone']}';
-                    if (call.isNotEmpty) {
-                    final uri = Uri.parse(call);
-                    if (await canLaunchUrl(uri)) {
-                      launchUrl(uri);
-                    }
-                  } else {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Nomor tidak tersedia',
-                          style: TextStyle(color: const Color.fromRGBO(255, 255, 255, 1)),
+                        SnackBar(
+                          content: Text(
+                            'Fitur Chat belum tersedia',
+                            style: TextStyle(color: const Color.fromRGBO(255, 255, 255, 1)),
+                          ),
+                          duration: Duration(seconds: 2),
+                          backgroundColor: Colors.red,
                         ),
-                        duration: Duration(seconds: 2),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
+                      );
+                    // final call = 'tel:${vendor['vendor_info']['phone']}';
+                    // if (call.isNotEmpty) {
+                    //   final uri = Uri.parse(call);
+                    //   if (await canLaunchUrl(uri)) {
+                    //     launchUrl(uri);
+                    //   }
+                    // } else {
+                    //   ScaffoldMessenger.of(context).showSnackBar(
+                    //     SnackBar(
+                    //       content: Text(
+                    //         'Nomor tidak tersedia',
+                    //         style: TextStyle(color: const Color.fromRGBO(255, 255, 255, 1)),
+                    //       ),
+                    //       duration: Duration(seconds: 2),
+                    //       backgroundColor: Colors.red,
+                    //     ),
+                    //   );
+                    // }
                   },
                   icon: Icon(Icons.chat, color: Colors.black),
                   label: Text("Chat Vendor",
@@ -236,39 +313,49 @@ class VendorDetailScreen extends StatelessWidget {
                 ),
                 ElevatedButton.icon(
                   onPressed: () async {
-                    final web = vendor['vendor_info']['website'];
-                    if (web != null && web.isNotEmpty) {
-                      final uri = Uri.parse(web);
-                      if (await canLaunchUrl(uri)) {
-                        launchUrl(uri);
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Tidak dapat membuka website',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                            duration: Duration(seconds: 2),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                    ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                            'Website tidak tersedia',
-                            style: TextStyle(color: Colors.white),
+                            'Fitur Website belum tersedia',
+                            style: TextStyle(color: const Color.fromRGBO(255, 255, 255, 1)),
                           ),
                           duration: Duration(seconds: 2),
                           backgroundColor: Colors.red,
                         ),
                       );
-                    }
+                    // final web = vendor['vendor_info']['website'];
+                    // if (web != null && web.isNotEmpty) {
+                    //   final uri = Uri.parse(web);
+                    //   if (await canLaunchUrl(uri)) {
+                    //     launchUrl(uri);
+                    //   } else {
+                    //     ScaffoldMessenger.of(context).showSnackBar(
+                    //       SnackBar(
+                    //         content: Text(
+                    //           'Tidak dapat membuka website',
+                    //           style: TextStyle(color: Colors.white),
+                    //         ),
+                    //         duration: Duration(seconds: 2),
+                    //         backgroundColor: Colors.red,
+                    //       ),
+                    //     );
+                    //   }
+                    // } else {
+                    //   ScaffoldMessenger.of(context).showSnackBar(
+                    //     SnackBar(
+                    //       content: Text(
+                    //         'Website tidak tersedia',
+                    //         style: TextStyle(color: Colors.white),
+                    //       ),
+                    //       duration: Duration(seconds: 2),
+                    //       backgroundColor: Colors.red,
+                    //     ),
+                    //   );
+                    // }
                   },
                   icon: Icon(Icons.language, color: Colors.black),
                   label: Text(
-                    "Visit Website",
+                    "Buka Website",
                     style: TextStyle(
                       color: Colors.black,
                       fontWeight: FontWeight.bold,
@@ -284,7 +371,84 @@ class VendorDetailScreen extends StatelessWidget {
                 ),
               ],
             ),
-            SizedBox(height: 30),
+            SizedBox(height: 20),
+
+            // Toggle Reviews
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Ulasan",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...List.generate(
+                    _visibleReviewsCount < reviews.length
+                        ? _visibleReviewsCount
+                        : reviews.length,
+                    (index) {
+                      final review = reviews[index];
+                      return ListTile(
+                        title: Text(review['reviewer_name'] ?? 'Anonymous',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        subtitle: Text(review['review_text'] ?? 'Tidak ada kalimat review'),
+                        trailing: SizedBox(
+                          width: 50,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              const Icon(Icons.star, color: Colors.yellow),
+                              Text(
+                                review['rating'].toString(),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  if (_visibleReviewsCount < reviews.length)
+                    Center(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          setState(() {
+                            _visibleReviewsCount += 10;
+                          });
+                        },
+                        child: const Text("Muat Lebih Banyak Ulasan",
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              const Color.fromRGBO(195, 147, 124, 1),
+                        ),
+                      ),
+                    ),
+                  if (_visibleReviewsCount >= reviews.length)
+                    const Center(
+                      child: Text(
+                        "Tidak ada ulasan lagi",
+                        style: TextStyle(color: Colors.black),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ],
         ),
       ),

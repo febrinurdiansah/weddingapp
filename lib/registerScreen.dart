@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'auth_service.dart';
+import 'loginScreen.dart';
 import 'main.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -15,6 +17,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _passtxtCtrl = TextEditingController();
   final TextEditingController _pass2txtCtrl = TextEditingController();
   final TextEditingController _telptxtCtrl = TextEditingController();
+  final TextEditingController _birthDateTxtCtrl = TextEditingController();
 
   String? _selectedCountry;
   File? _profileImage;
@@ -109,10 +112,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Image.asset(
-                          "assets/img/logo.png",
-                          width: 50,
-                          height: 50,
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(15),
+                          child: Image.asset(
+                            "assets/img/logo.png",
+                            width: 50,
+                            height: 50,
+                          ),
                         ),
                         SizedBox(width: 8),
                         Text(
@@ -128,7 +134,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     SizedBox(height: 50),
                     Text(
-                      "Register",
+                      "Daftar",
                       style: TextStyle(
                         fontSize: 40,
                         fontFamily: 'RozhaOne',
@@ -162,17 +168,58 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _inputField("Name", "Your Name", _nametxtCtrl),
+                              _inputField("Nama", "Nama Anda", _nametxtCtrl),
                               SizedBox(height: 16),
-                              _inputField("Email", "Your email", _emailtxtCtrl),
+                              _inputField("Email", "Email Anda", _emailtxtCtrl),
                               SizedBox(height: 16),
-                              _inputField("Phone Number", "Your phone number", _telptxtCtrl),
+                              _inputField("Nomor telepon", "Nomor telepon Anda", _telptxtCtrl),
                               SizedBox(height: 16),
                               _countryDropdown(),
                               SizedBox(height: 16),
-                              _passwordInputField("Password", "Your password, at least 8 character", _passtxtCtrl),
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Pilih tanggal lahir",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    SizedBox(height: 8),
+                                    GestureDetector(
+                                      onTap: () async {
+                                        DateTime? pickedDate = await showDatePicker(
+                                          context: context,
+                                          initialDate: DateTime.now(),
+                                          firstDate: DateTime(1900),
+                                          lastDate: DateTime.now(),
+                                        );
+                                        if (pickedDate != null) {
+                                          _birthDateTxtCtrl.text = DateFormat('yyyy-MM-dd').format(pickedDate);
+                                        }
+                                      },
+                                      child: AbsorbPointer(
+                                        child: TextFormField(
+                                          controller: _birthDateTxtCtrl,
+                                          decoration: InputDecoration(
+                                            labelText: "Tanggal lahir",
+                                            hintText: "Pilih tanggal lahir Anda",
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                               SizedBox(height: 16),
-                              _passwordInputField("Confirm Password", "Re-type your password", _pass2txtCtrl),
+                              _passwordInputField("Kata sandi", "Kata sandi Anda, minimal 6 karakter", _passtxtCtrl),
+                              SizedBox(height: 16),
+                              _passwordInputField("Konfirmasi Kata Sandi", "Ketik ulang kata sandi Anda", _pass2txtCtrl),
+                              SizedBox(height: 13),
                               Align(
                                 alignment: Alignment.centerRight,
                                 child: TextButton(
@@ -180,7 +227,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     Navigator.pop(context);
                                   },
                                   child: Text(
-                                    "Have an Account? Login here",
+                                    "Sudah punya akun? Login di sini",
                                     style: TextStyle(color: Colors.blue),
                                   ),
                                 ),
@@ -222,7 +269,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             // Pastikan country tidak null
                             if (_selectedCountry == null) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Please select a country')),
+                                SnackBar(content: Text('Silakan pilih negara')),
                               );
                               return;
                             }
@@ -233,14 +280,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               name: _nametxtCtrl.text,
                               phone: _telptxtCtrl.text,
                               country: _selectedCountry!,
+                              dateOfBirth: DateTime.parse(_birthDateTxtCtrl.text),
                               profileImage: _profileImage,
                             );
 
                             if (result['status'] == 'Success') {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(builder: (context) => NavPage()),
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: Colors.green,
+                                  content: Text(
+                                    'Akun berhasil dibuat',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                ),
                               );
+                              Navigator.pop(context);
+                              // Navigator.pushReplacement(
+                              //   context,
+                              //   MaterialPageRoute(builder: (context) => LoginScreen()),
+                              // );
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
@@ -269,7 +327,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               SnackBar(
                                 backgroundColor: Colors.red,
                                 content: Text(
-                                  "Registrasi error, tolong ulangi lagi nanti.",
+                                  "Daftar error, tolong ulangi lagi nanti.",
                                   style: TextStyle(color: Colors.white),
                                 ),
                               ),
@@ -284,7 +342,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                       child: Text(
-                        "Register",
+                        "Daftar",
                         style: TextStyle(
                           fontSize: 16,
                           color: Colors.white,
@@ -322,7 +380,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Country",
+            "Negara/Wilayah",
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: Colors.black,

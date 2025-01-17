@@ -128,11 +128,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
               );
+
               if (updatedData != null) {
-                _updateProfile(updatedData);
+                setState(() {
+                  name = updatedData["name"];
+                  dateOfBirth = updatedData["dateOfBirth"];
+                  country = updatedData["country"];
+                });
+              } else {
                 await _loadUserProfile();
               }
-            },
+              if (updatedData != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text("Profil berhasil diperbarui!"),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+            }
           )
         ],
       ),
@@ -146,9 +160,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               CircleAvatar(
                 radius: 60,
-                backgroundImage: profileImage != null
-                    ? FileImage(profileImage!)
-                    : AssetImage('assets/img/no_img.png') as ImageProvider,
+                backgroundImage: AssetImage('assets/img/no_img.png') as ImageProvider,
+                // backgroundImage: profileImage != null
+                //     ? FileImage(profileImage!)
+                //     : AssetImage('assets/img/no_img.png') as ImageProvider,
               ),
               SizedBox(height: 20),
               Text(
@@ -175,7 +190,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
                 child: ListTile(
-                  title: Text("Date of Birth", style: TextStyle(fontWeight: FontWeight.bold)),
+                  title: Text("Tanggal lahir", style: TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text(DateFormat('dd/MM/yyyy').format(dateOfBirth)),
                 ),
               ),
@@ -194,7 +209,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
                 child: ListTile(
-                  title: Text("Country/Region", style: TextStyle(fontWeight: FontWeight.bold)),
+                  title: Text("Negara/Wilayah", style: TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text(country),
                 ),
               ),
@@ -268,6 +283,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final userId = await _authService.getUserId();
 
       if (token == null || userId == null) {
+        print("Token or User ID not found. Token: $token, User ID: $userId");
         throw Exception("User not logged in");
       }
 
@@ -278,9 +294,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       }
 
       final Map<String, dynamic> bodyData = {
-        'name': updatedData['name'],
-        'dateOfBirth': updatedData['dateOfBirth'],
-        'country': updatedData['country'],
+        if (updatedData['name'] != null) 'name': updatedData['name'],
+        if (updatedData['dateOfBirth'] != null) 'dateOfBirth': updatedData['dateOfBirth'],
+        if (updatedData['country'] != null) 'country': updatedData['country'],
         if (base64Image != null) 'profileImage': base64Image,
       };
 
@@ -288,7 +304,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         Uri.parse('https://api-bagas2.vercel.app/user/$userId'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
+          'x-auth-token': token,
         },
         body: json.encode(bodyData),
       );
@@ -297,16 +313,32 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         throw Exception("Failed to update profile: ${response.body}");
       }
 
-      Navigator.pop(context, true);
+      // Tampilkan snackbar sukses
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Profil berhasil diperbarui!"),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      // Kembali ke halaman profile dengan data yang diperbarui
+      Navigator.pop(context, {
+        "name": updatedData["name"],
+        "dateOfBirth": DateTime.parse(updatedData["dateOfBirth"]),
+        "country": updatedData["country"],
+        "profileImage": profileImage,
+      });
+
     } catch (e) {
       print('Error updating profile: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update profile: ${e.toString()}')),
+        SnackBar(
+          content: Text('Gagal memperbarui profil: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
-
-
 
   @override
   void initState() {
@@ -403,9 +435,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 children: [
                   CircleAvatar(
                     radius: 60,
-                    backgroundImage: profileImage != null
-                        ? FileImage(profileImage!)
-                        : AssetImage('assets/img/no_img.png') as ImageProvider,
+                    backgroundImage: AssetImage('assets/img/no_img.png') as ImageProvider,
+                    // backgroundImage: profileImage != null
+                    //     ? FileImage(profileImage!)
+                    //     : AssetImage('assets/img/no_img.png') as ImageProvider,
                   ),
                   Positioned(
                     bottom: 0,
@@ -425,7 +458,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               TextField(
                 controller: nameController,
                 decoration: InputDecoration(
-                  labelText: "Name",
+                  labelText: "Nama",
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
@@ -437,7 +470,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   child: TextField(
                     controller: dateController,
                     decoration: InputDecoration(
-                      labelText: "Date of Birth",
+                      labelText: "Tanggal lahir",
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
@@ -447,7 +480,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               DropdownButtonFormField<String>(
                 value: selectedCountry,
                 decoration: InputDecoration(
-                  labelText: "Country/Region",
+                  labelText: "Negara/Wilayah",
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 items: ["Indonesia", "USA", "Singapura", "Japan", "Germany", "France", "Australia"].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
@@ -469,20 +502,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     };
                     await updateUserProfile(updatedData);
 
-                    Navigator.pop(context, {
-                      "name": nameController.text,
-                      "dateOfBirth": parsedDate,
-                      "country": selectedCountry,
-                      "profileImage": profileImage,
-                    });
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Profile updated successfully')),
-                    );
                   } catch (e) {
-                    print("Error updating user profile: $e");
+                    print("Error parsing date: $e");
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Failed to update profile: $e')),
+                      SnackBar(
+                        backgroundColor: Colors.red,
+                        content: Text('Failed to parse date: $e',
+                          style: TextStyle(
+                            color: Colors.white
+                            ),
+                          )
+                      ),
                     );
                   }
                 },
@@ -491,7 +521,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: Text("Save changes",
+                child: Text("Simpan",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,

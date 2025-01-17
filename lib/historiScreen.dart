@@ -207,7 +207,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         backgroundColor: Color.fromRGBO(195, 147, 124, 1),
         elevation: 0,
         leading: Container(),
-        title: Text("History", style: TextStyle(color: Colors.black)),
+        title: Text("Histori", style: TextStyle(color: Colors.black)),
         centerTitle: true,
         actions: [
           IconButton(

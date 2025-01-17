@@ -47,16 +47,17 @@ class _LoginScreenState extends State<LoginScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Welcome to",
+                          "Selamat Datang di",
                           style: TextStyle(
-                            fontSize: 24,
+                            fontSize: 22,
                             color: Colors.black,
                           ),
                         ),
                         Text(
                           "PAWIWAHAN",
                           style: TextStyle(
-                            fontSize: 28,
+                            fontSize: 25,
+                            fontFamily: "Rufina",
                             fontWeight: FontWeight.bold,
                             color: Colors.black,
                           ),
@@ -71,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         );
                       },
                       child: Text(
-                        "No Account? \nSign up",
+                        "Belum punya akun? \nDaftar",
                         style: TextStyle(
                           color: Colors.blue,
                           fontSize: 14,
@@ -99,27 +100,38 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          "Sign in",
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            "Masuk",
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
                           ),
                         ),
                         SizedBox(height: 16),
                         _inputField("Masukkan email anda", "Email", _emailtxtCtrl),
                         SizedBox(height: 16),
-                        _passwordInputField("Masukkan password anda", "Password", _passtxtCtrl),
+                        _passwordInputField("Masukkan Kata sandi anda", "Kata sandi", _passtxtCtrl),
                         SizedBox(height: 8),
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
                             onPressed: () {
-                              // Tambahkan aksi lupa password
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: Colors.red,
+                                  content: Text(
+                                    'Fungsi Lupa Kata sandi belum dibuat',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                              );
                             },
                             child: Text(
-                              "Lupa Password",
+                              "Lupa Kata sandi",
                               style: TextStyle(color: Colors.grey),
                             ),
                           ),
@@ -134,6 +146,15 @@ class _LoginScreenState extends State<LoginScreen> {
                                   password: _passtxtCtrl.text,
                                 );
                                 if (result['status'] == 'Success') {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      backgroundColor: Colors.green,
+                                      content: Text(
+                                        'Berhasil Login',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                    ),
+                                  );
                                   Navigator.pushReplacement(
                                     context,
                                     MaterialPageRoute(builder: (context) => NavPage()),
@@ -164,7 +185,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             child: Text(
-                              "Sign in",
+                              "Masuk",
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
@@ -180,11 +201,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Image.asset(
-                      "assets/img/logo.png",
-                      width: 50,
-                      height: 50,
-                      fit: BoxFit.cover,
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(15),
+                      child: Image.asset(
+                        "assets/img/logo.png",
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.cover,
+                      ),
                     ),
                     SizedBox(width: 8),
                     Text(

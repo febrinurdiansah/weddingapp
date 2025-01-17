@@ -33,6 +33,7 @@ class AuthService {
     required String name,
     required String phone,
     required String country,
+    required DateTime dateOfBirth,
     File? profileImage,
   }) async {
     try {
@@ -42,6 +43,7 @@ class AuthService {
         'name': name,
         'phone': phone,
         'country': country,
+        'dateOfBirth': dateOfBirth.toIso8601String(),
       };
 
       if (profileImage != null) {
@@ -109,9 +111,15 @@ class AuthService {
       );
 
       if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
         return {
           'status': 'Success',
-          'data': jsonDecode(response.body),
+          'data': {
+            ...data,
+            'dateOfBirth': data['dateOfBirth'] != null
+                ? DateTime.parse(data['dateOfBirth'])
+                : null,
+          },
         };
       } else {
         return {
@@ -223,6 +231,7 @@ class AuthService {
     String? name,
     String? phone,
     String? country,
+    DateTime? dateOfBirth,
     File? profileImage,
   }) async {
     try {
@@ -239,6 +248,7 @@ class AuthService {
       if (name != null) body['name'] = name;
       if (phone != null) body['phone'] = phone;
       if (country != null) body['country'] = country;
+      if (dateOfBirth != null) body['dateOfBirth'] = dateOfBirth.toIso8601String();
       if (profileImage != null) {
         final compressedImage = await _compressAndConvertImage(profileImage);
         if (compressedImage != null) {
