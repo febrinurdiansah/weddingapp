@@ -1,3 +1,14 @@
+errornya:
+sekarang muncul error ini:
+══╡ EXCEPTION CAUGHT BY IMAGE RESOURCE SERVICE ╞════════════════════════════════════════════════════
+The following FileSystemException was thrown resolving an image codec:
+Cannot retrieve length of file, path =
+'/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAoHBwgHBgoICAgLCgoLDhgQDg0NDh0VFhEYIx8lJCIfIiEmKzcvJik0KSEiMEExNDk7Pj4+JS5ESUM8SDc9Pjv/2wBDAQoLCw4NDhwQEBw7KCIoOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozv/wAARCAMVAYIDASIAAhEBAxEB/8QAHAAAAgMBAQEBAAAAAAAAAAAAAgMAAQQFBgcI/... (seterunya saya potong karena kepanjangan)
+
+
+
+//codenya:
+
 import 'package:WeddingAPP/favoritesScreen.dart';
 import 'package:WeddingAPP/loginScreen.dart';
 import 'package:flutter/material.dart';
@@ -20,7 +31,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String email = "Loading...";
   DateTime dateOfBirth = DateTime.now();
   String country = "Indonesia";
-  String? profileImage;
+  File? profileImage;
   final AuthService _authService = AuthService();
   bool isLoading = true;
 
@@ -67,7 +78,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           dateOfBirth = DateTime.parse(userData['dateOfBirth'] ?? DateTime.now().toIso8601String());
           country = userData['country'] ?? 'Indonesia';
           if (userData['profileImage'] != null) {
-            profileImage = userData['profileImage'];
+            profileImage = File(userData['profileImage']);
           }
           isLoading = false;
         });
@@ -162,10 +173,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               CircleAvatar(
                 radius: 60,
                 backgroundImage: profileImage != null
-                  ? (profileImage!.startsWith('/storage/') || profileImage!.contains('C:/')) 
-                      ? FileImage(File(profileImage!))
-                      : MemoryImage(base64Decode(profileImage!))
-                  : AssetImage('assets/img/no_img.png') as ImageProvider,
+                    ? FileImage(profileImage!)
+                    : AssetImage('assets/img/no_img.png') as ImageProvider,
               ),
               SizedBox(height: 20),
               Text(
@@ -282,14 +291,14 @@ class EditProfileScreen extends StatefulWidget {
   final String email;
   final DateTime dateOfBirth;
   final String country;
-  final String? profileImage;
+  final File? profileImage;
 
   EditProfileScreen({
     required this.name,
     required this.email,
     required this.dateOfBirth,
     required this.country,
-    required this.profileImage,
+    this.profileImage,
   });
 
   @override
@@ -301,7 +310,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController dateController;
   DateTime? selectedDateOfBirth;
   String? selectedCountry;
-  String? profileImage;
+  File? profileImage;
   final AuthService _authService = AuthService();
 
   Future<void> updateUserProfile(Map<String, dynamic> updatedData) async {
@@ -314,11 +323,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         throw Exception("User not logged in");
       }
 
+      String? base64Image;
+      if (profileImage != null) {
+        List<int> imageBytes = await profileImage!.readAsBytes();
+        base64Image = base64Encode(imageBytes);
+      }
+
       final Map<String, dynamic> bodyData = {
         if (updatedData['name'] != null) 'name': updatedData['name'],
         if (updatedData['dateOfBirth'] != null) 'dateOfBirth': updatedData['dateOfBirth'],
         if (updatedData['country'] != null) 'country': updatedData['country'],
-        if (profileImage != null) 'profileImage': profileImage,
+        if (base64Image != null) 'profileImage': base64Image,
       };
 
       final response = await http.put(
@@ -387,53 +402,53 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _pickImage() async {
-  final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
-  if (pickedFile != null) {
-    File file = File(pickedFile.path);
-    String? compressedBase64 = await compressImage(file);
-    if (compressedBase64 != null) {
-      setState(() {
-        profileImage = compressedBase64;
-      });
+    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      // Compress image
+      File? compressedImage = await compressImage(File(pickedFile.path));
+      if (compressedImage != null) {
+        setState(() {
+          profileImage = compressedImage;
+        });
+      }
     }
   }
-}
 
-  Future<String?> compressImage(File file) async {
-  try {
-    final filePath = file.absolute.path;
-    final lastIndex = filePath.lastIndexOf(RegExp(r'.jp'));
-    if (lastIndex != -1) {
-      final splitName = filePath.substring(0, lastIndex);
-      final outPath = "${splitName}_compressed.jpg";
+  Future<File?> compressImage(File file) async {
+    try {
+      // Get file path
+      final filePath = file.absolute.path;
       
-      final compressedImage = await FlutterImageCompress.compressWithFile(
+      // Create output file path
+      final lastIndex = filePath.lastIndexOf(RegExp(r'.jp'));
+      if (lastIndex != -1) {
+        final splitName = filePath.substring(0, (lastIndex));
+        final outPath = "${splitName}_compressed.jpg";
+        
+        // Compress file
+        final compressedImage = await FlutterImageCompress.compressAndGetFile(
           filePath,
-          outPath, // error
+          outPath,
           quality: 70, // Adjust quality as needed (0-100)
           format: CompressFormat.jpeg,
         );
         
-        if (compressedImage != null) {
-        return base64Encode(compressedImage);
+        return compressedImage != null ? File(compressedImage.path) : null;
       } else {
-        return null;
-      }
-    } else {
-      print("Invalid file name for compression");
-      ScaffoldMessenger.of(context).showSnackBar(
+        print("Invalid file name for compression");
+        ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Format gambar tidak mendukung, gunakan file berformat jpg'),
           backgroundColor: Colors.red,
         ),
       );
       return null;
+      }
+    } catch (e) {
+      print('Error compressing image: $e');
+      return null;
     }
-  } catch (e) {
-    print('Error compressing image: $e');
-    return null;
   }
-}
 
   @override
   void dispose() {
@@ -468,10 +483,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   CircleAvatar(
                     radius: 60,
                     backgroundImage: profileImage != null
-                      ? (profileImage!.startsWith('/storage/') || profileImage!.contains('C:/')) 
-                          ? FileImage(File(profileImage!))
-                          : MemoryImage(base64Decode(profileImage!))
-                      : AssetImage('assets/img/no_img.png') as ImageProvider,
+                        ? FileImage(profileImage!)
+                        : AssetImage('assets/img/no_img.png') as ImageProvider,
                   ),
                   Positioned(
                     bottom: 0,
