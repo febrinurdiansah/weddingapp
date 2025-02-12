@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 
 class AuthService {
   final String baseUrl = 'https://api-bagas2.vercel.app/user';
@@ -83,6 +84,38 @@ class AuthService {
     }
   }
 
+  // Fungsi untuk refresh token
+  Future<String?> refreshToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final currentToken = prefs.getString('auth_token');
+    if (currentToken == null) return null;
+
+    // Gunakan jwt_decoder untuk mengecek apakah token sudah expired
+    if (!JwtDecoder.isExpired(currentToken)) {
+      return currentToken;
+    }
+
+    // Jika token sudah expired, coba dapatkan token baru dari endpoint refresh
+    final response = await http.post(
+      Uri.parse('$baseUrl/refresh'),
+      headers: {
+        'Content-Type': 'application/json',
+        'x-auth-token': currentToken,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final newToken = data['token'];
+      await prefs.setString('auth_token', newToken);
+      return newToken;
+    } else {
+      // Jika gagal refresh, hapus session dan kembalikan null
+      await logout();
+      return null;
+    }
+  }
+
   Future<bool> checkLoginSession() async {
     final prefs = await SharedPreferences.getInstance();
     final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
@@ -93,7 +126,7 @@ class AuthService {
 
   Future<Map<String, dynamic>> getUserProfile() async {
     try {
-      final token = await getToken();
+      final token = await refreshToken();
       final userId = await getUserId();
       
       if (token == null || userId == null) {
@@ -195,7 +228,7 @@ class AuthService {
 
   Future<Map<String, dynamic>?> getCurrentUser() async {
     try {
-      final token = await getToken();
+      final token = await refreshToken();
       final userId = await getUserId();
       print('Current token: $token');
       print('Current userId: $userId');
@@ -235,7 +268,7 @@ class AuthService {
     File? profileImage,
   }) async {
     try {
-      final token = await getToken();
+      final token = await refreshToken();
       if (token == null) {
         return {
           'status': 'Error',
@@ -243,7 +276,6 @@ class AuthService {
         };
       }
 
-      // Prepare request body
       Map<String, dynamic> body = {};
       if (name != null) body['name'] = name;
       if (phone != null) body['phone'] = phone;
