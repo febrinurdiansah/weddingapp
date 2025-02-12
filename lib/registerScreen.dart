@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'auth_service.dart';
-import 'loginScreen.dart';
-import 'main.dart';
 
 class RegisterScreen extends StatefulWidget {
   @override

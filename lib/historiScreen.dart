@@ -1,3 +1,4 @@
+import 'package:WeddingAPP/detailScreen.dart';
 import 'package:custom_rating_bar/custom_rating_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -225,49 +226,55 @@ class _HistoryScreenState extends State<HistoryScreen> {
           itemCount: historyItems.length,
           itemBuilder: (context, index) {
             final item = historyItems[index];
-            return Card(
-              margin: const EdgeInsets.only(bottom: 16.0),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(13),
-                child: Column(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: _buildImage(item['vendor_info']['featured_image']),
-                            ),
-                    SizedBox(height: 8),
-                    RatingBar.readOnly(
-                      filledIcon: Icons.star,
-                      emptyIcon: Icons.star_border,
-                      halfFilledIcon: Icons.star_half,
-                      isHalfAllowed: true,
-                      initialRating: item['vendor_info']['rating'] ?? 0.0,
-                      maxRating: 5,
-                      filledColor: Colors.yellow,
-                      halfFilledColor: Colors.yellow,
-                      size: 24,
-                      alignment: Alignment.center,
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      item['vendor_info']['name'] ?? "Tidak ada nama Vendor",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
+            return GestureDetector(
+              onTap: () => Navigator.push(context, MaterialPageRoute(
+                builder: (context) => VendorDetailScreen(vendor: item,),
+                  )
+                ),
+              child: Card(
+                margin: const EdgeInsets.only(bottom: 16.0),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(13),
+                  child: Column(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: _buildImage(item['vendor_info']['featured_image']),
+                              ),
+                      SizedBox(height: 8),
+                      RatingBar.readOnly(
+                        filledIcon: Icons.star,
+                        emptyIcon: Icons.star_border,
+                        halfFilledIcon: Icons.star_half,
+                        isHalfAllowed: true,
+                        initialRating: item['vendor_info']['rating'] ?? 0.0,
+                        maxRating: 5,
+                        filledColor: Colors.yellow,
+                        halfFilledColor: Colors.yellow,
+                        size: 24,
+                        alignment: Alignment.center,
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 5),
-                    Text(
-                      item['vendor_info']['address'] ?? "Tidak ada alamat",
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+                      SizedBox(height: 8),
+                      Text(
+                        item['vendor_info']['name'] ?? "Tidak ada nama Vendor",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 5),
+                      Text(
+                        item['vendor_info']['address'] ?? "Tidak ada alamat",
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );

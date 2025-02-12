@@ -1,9 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
 import 'package:google_nav_bar/google_nav_bar.dart';
-import 'package:device_preview/device_preview.dart';
 import 'auth_service.dart';
 import 'historiScreen.dart';
 import 'homeScreen.dart';
@@ -12,12 +9,7 @@ import 'profilScreen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(
-    DevicePreview(
-      enabled: !kReleaseMode,
-      builder: (context) => MyApp(),
-    )
-  );
+  runApp(MyApp());
 }
 
 class SplashScreen extends StatefulWidget {

@@ -161,11 +161,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               CircleAvatar(
                 radius: 60,
-                backgroundImage: profileImage != null
-                  ? (profileImage!.startsWith('/storage/') || profileImage!.contains('C:/')) 
-                      ? FileImage(File(profileImage!))
-                      : MemoryImage(base64Decode(profileImage!))
-                  : AssetImage('assets/img/no_img.png') as ImageProvider,
+                backgroundImage: profileImage != null && profileImage!.isNotEmpty
+                        ? MemoryImage(base64Decode(profileImage!))
+                        : AssetImage('assets/img/no_img.png') as ImageProvider,
               ),
               SizedBox(height: 20),
               Text(
@@ -409,7 +407,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       
       final compressedImage = await FlutterImageCompress.compressWithFile(
           filePath,
-          outPath, // error
           quality: 70, // Adjust quality as needed (0-100)
           format: CompressFormat.jpeg,
         );
@@ -467,11 +464,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 children: [
                   CircleAvatar(
                     radius: 60,
-                    backgroundImage: profileImage != null
-                      ? (profileImage!.startsWith('/storage/') || profileImage!.contains('C:/')) 
-                          ? FileImage(File(profileImage!))
-                          : MemoryImage(base64Decode(profileImage!))
-                      : AssetImage('assets/img/no_img.png') as ImageProvider,
+                    backgroundImage: profileImage != null && profileImage!.isNotEmpty
+                        ? MemoryImage(base64Decode(profileImage!))
+                        : AssetImage('assets/img/no_img.png') as ImageProvider,
                   ),
                   Positioned(
                     bottom: 0,
